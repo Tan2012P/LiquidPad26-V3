@@ -30,6 +30,7 @@ import java.util.*;
 
 public class MainActivity extends Activity {
     private final int WHITE = Color.WHITE;
+    private final int RED = 0xFFD71920;
     private FrameLayout root;
     private FrameLayout pageContainer;
     private LinearLayout homeContent;
@@ -53,32 +54,24 @@ public class MainActivity extends Activity {
     }
     private Drawable wallpaper() {
         return new Drawable() {
-            final Paint paint=new Paint(3);
+            final Paint p=new Paint(3);
             @Override public void draw(Canvas canvas) {
                 android.graphics.Rect r=getBounds();
                 float w=r.width(),h=r.height();
-                paint.setShader(new LinearGradient(0,0,w,h,
-                    new int[]{0xFF0A356E,0xFF2767B4,0xFF74A6E1,0xFFC7B5E6},
-                    null,Shader.TileMode.CLAMP));
-                canvas.drawRect(r,paint);paint.setShader(null);
-                Path wave=new Path();
-                wave.moveTo(w*.30f,-h*.12f);
-                wave.cubicTo(w*.80f,h*.12f,w*.64f,h*.48f,w*1.12f,h*.65f);
-                wave.lineTo(w*1.1f,-h*.2f);wave.close();
-                paint.setShader(new LinearGradient(w*.35f,0,w,h,
-                    new int[]{0x8845B8F5,0x44C2E4FF,0x00FFFFFF},
-                    null,Shader.TileMode.CLAMP));
-                canvas.drawPath(wave,paint);
-                Path wave2=new Path();wave2.moveTo(-w*.1f,h*.95f);
-                wave2.cubicTo(w*.18f,h*.46f,w*.49f,h*.82f,w*.76f,h*1.1f);
-                wave2.lineTo(0,h*1.1f);wave2.close();
-                paint.setShader(new LinearGradient(0,h*.5f,w,h,
-                    new int[]{0x668ED7FF,0x55A0A5F1,0x00FFFFFF},
-                    null,Shader.TileMode.CLAMP));
-                canvas.drawPath(wave2,paint);paint.setShader(null);
+                p.setShader(new LinearGradient(0,0,w,h,0xFF080808,0xFF242424,Shader.TileMode.CLAMP));
+                canvas.drawRect(r,p);p.setShader(null);
+                p.setColor(0x16FFFFFF);
+                float gap=dp(19);
+                for(float y=dp(22);y<h;y+=gap)
+                    for(float x=dp(22);x<w;x+=gap)
+                        canvas.drawCircle(x,y,dp(1.15f),p);
+                p.setColor(0x12FFFFFF);
+                canvas.drawCircle(w*.84f,h*.48f,Math.min(w,h)*.31f,p);
+                p.setColor(0x16D71920);
+                canvas.drawCircle(w*.84f,h*.48f,Math.min(w,h)*.19f,p);
             }
             @Override public void setAlpha(int alpha){}
-            @Override public void setColorFilter(android.graphics.ColorFilter filter){}
+            @Override public void setColorFilter(android.graphics.ColorFilter f){}
             @Override public int getOpacity(){return android.graphics.PixelFormat.OPAQUE;}
         };
     }
@@ -137,7 +130,7 @@ public class MainActivity extends Activity {
         super.onCreate(b);
         getWindow().setFlags(1024,1024);
         getWindow().setStatusBarColor(0xFF1B3E83);
-        getWindow().setNavigationBarColor(0xFF9EAFDD);
+        getWindow().setNavigationBarColor(0xFF080808);
         prefs=getSharedPreferences("liquidpad",MODE_PRIVATE);
         refreshApps();loadDock();showHome(true);
     }
@@ -192,23 +185,23 @@ public class MainActivity extends Activity {
     private View glassWidget(String heading,String main,String sub,int width) {
         LinearLayout w=vertical();w.setGravity(Gravity.CENTER_VERTICAL);
         w.setPadding(dp(18),dp(13),dp(18),dp(12));
-        w.setBackground(rounded(0x62FFFFFF,27));
+        w.setBackground(rounded(0xFF242424,26));
         w.setElevation(dp(3));
-        TextView h=text(heading,12,false);h.setAlpha(.86f);w.addView(h);
-        TextView m=text(main,36,true);m.setPadding(0,dp(3),0,dp(3));w.addView(m);
+        TextView h=text("●  "+heading,12,true);h.setTextColor(RED);w.addView(h);
+        TextView m=text(main,38,true);m.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);m.setPadding(0,dp(3),0,dp(3));w.addView(m);
         TextView s=text(sub,12,false);s.setAlpha(.9f);w.addView(s);
         w.setLayoutParams(new LinearLayout.LayoutParams(dp(width),dp(111)));
         return w;
     }
     private View clockWidget() {
         Date now=new Date();
-        return glassWidget("TODAY",new SimpleDateFormat("h:mm",Locale.getDefault()).format(now),
+        return glassWidget("NOTHING • TIME",new SimpleDateFormat("h:mm",Locale.getDefault()).format(now),
             new SimpleDateFormat("EEEE, d MMMM",Locale.getDefault()).format(now),210);
     }
     private View batteryWidget() {
         BatteryManager b=(BatteryManager)getSystemService(Context.BATTERY_SERVICE);
         int pct=b==null?-1:b.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
-        return glassWidget("BATTERY",pct<0?"--":pct+"%","Lenovo tablet",155);
+        return glassWidget("POWER",pct<0?"--":pct+"%","Lenovo tablet",155);
     }
     private void updateDots() {
         if(indicators==null)return;
@@ -272,7 +265,7 @@ public class MainActivity extends Activity {
         TextView clock=text(new SimpleDateFormat("h:mm",Locale.getDefault()).format(new Date()),14,true);
         status.addView(clock);
         status.addView(new View(this),new LinearLayout.LayoutParams(0,dp(1),1));
-        TextView controls=text("◉  ▰  ▣",15,true);
+        TextView controls=text("●  NOTHING PAD  •  ⚙",14,true);controls.setTypeface(Typeface.MONOSPACE);
         controls.setPadding(dp(12),dp(5),dp(6),dp(5));
         controls.setOnClickListener(v->showControlCenter());
         status.addView(controls);
@@ -282,7 +275,7 @@ public class MainActivity extends Activity {
         main.setPadding(0,dp(25),0,0);
         if(landscape) {
             LinearLayout widgets=vertical();widgets.setPadding(dp(3),0,dp(13),0);
-            TextView heading=text("Widgets",14,true);heading.setAlpha(.86f);
+            TextView heading=text("N O T H I N G",16,true);heading.setTypeface(Typeface.MONOSPACE);
             heading.setPadding(dp(8),0,0,dp(13));widgets.addView(heading);
             widgets.addView(clockWidget());
             LinearLayout.LayoutParams gap=new LinearLayout.LayoutParams(1,dp(12));
@@ -290,7 +283,7 @@ public class MainActivity extends Activity {
             widgets.addView(batteryWidget());
             TextView openSearch=text("⌕  Search",14,false);
             openSearch.setGravity(Gravity.CENTER);
-            openSearch.setBackground(rounded(0x66E9EDFA,18));
+            openSearch.setBackground(rounded(0xFF292929,22));
             LinearLayout.LayoutParams sl=new LinearLayout.LayoutParams(dp(210),dp(43));
             sl.topMargin=dp(17);widgets.addView(openSearch,sl);
             openSearch.setOnClickListener(v->showSearch());
@@ -311,7 +304,7 @@ public class MainActivity extends Activity {
             new LinearLayout.LayoutParams(0,-1,1):
             new LinearLayout.LayoutParams(-1,0,1));
         homeContent.addView(main,new LinearLayout.LayoutParams(-1,0,1));
-        indicators=text("",15,true);indicators.setGravity(Gravity.CENTER);
+        indicators=text("",15,true);indicators.setGravity(Gravity.CENTER);indicators.setTextColor(RED);
         indicators.setPadding(0,0,0,dp(12));updateDots();
         indicators.setOnClickListener(v->switchPage((page+1)%pages));
         homeContent.addView(indicators);
@@ -319,7 +312,7 @@ public class MainActivity extends Activity {
         dockScroll.setHorizontalScrollBarEnabled(false);
         LinearLayout dock=new LinearLayout(this);dock.setGravity(Gravity.CENTER_VERTICAL);
         dock.setPadding(dp(21),dp(11),dp(21),dp(10));
-        dock.setBackground(rounded(0xB7E7EAF3,28));dock.setElevation(dp(7));
+        dock.setBackground(rounded(0xEE303030,32));dock.setElevation(dp(7));
         for(String pkg:new ArrayList<>(dockPackages)) {
             ResolveInfo r=find(pkg);
             if(r!=null) dock.addView(appIcon(r,true,dp(70)),new LinearLayout.LayoutParams(dp(70),dp(63)));
@@ -327,7 +320,7 @@ public class MainActivity extends Activity {
         dockScroll.addView(dock);
         LinearLayout.LayoutParams dl=new LinearLayout.LayoutParams(-2,dp(85));
         dl.gravity=Gravity.CENTER_HORIZONTAL;homeContent.addView(dockScroll,dl);
-        TextView search=text("⌕  Search",12,false);
+        TextView search=text("●  SEARCH  /  APPS",12,true);search.setTypeface(Typeface.MONOSPACE);
         search.setGravity(Gravity.CENTER);search.setPadding(0,dp(6),0,0);
         search.setOnClickListener(v->showSearch());
         search.setOnLongClickListener(v->{showAppLibrary();return true;});
@@ -371,7 +364,7 @@ public class MainActivity extends Activity {
         EditText input=new EditText(this);input.setSingleLine(true);input.setTextSize(18);
         input.setTextColor(WHITE);input.setHintTextColor(0xDDFFFFFF);input.setHint("Search Apps");
         input.setPadding(dp(18),dp(13),dp(18),dp(13));
-        input.setBackground(rounded(0x77FFFFFF,22));panel.addView(input);
+        input.setBackground(rounded(0xFF303030,22));panel.addView(input);
         TextView title=text("App Library",25,true);
         title.setPadding(0,dp(24),0,dp(16));panel.addView(title);
         ScrollView scroll=new ScrollView(this);scroll.setVerticalScrollBarEnabled(false);
@@ -384,7 +377,7 @@ public class MainActivity extends Activity {
             Drawable d=r.loadIcon(getPackageManager());d.setBounds(0,0,dp(37),dp(37));
             row.setCompoundDrawables(d,null,null,null);row.setCompoundDrawablePadding(dp(10));
             row.setPadding(dp(14),dp(8),dp(14),dp(8));
-            row.setBackground(rounded(0x3BFFFFFF,18));
+            row.setBackground(rounded(0xFF292929,18));
             LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(58));lp.bottomMargin=dp(7);
             results.addView(row,lp);entries.add(row);
             row.setOnClickListener(v->launch(r,row));
@@ -407,12 +400,12 @@ public class MainActivity extends Activity {
         if(root==null || panelOpen)return;
         panelOpen=true;
         panelOverlay=new FrameLayout(this);
-        panelOverlay.setBackgroundColor(0x850C1730);
+        panelOverlay.setBackgroundColor(0xBB000000);
         root.addView(panelOverlay,new FrameLayout.LayoutParams(-1,-1));
         panelOverlay.setOnClickListener(v->hideControlCenter());
         LinearLayout card=vertical();
         card.setPadding(dp(20),dp(22),dp(20),dp(24));
-        card.setBackground(rounded(0xEE5477A9,30));
+        card.setBackground(rounded(0xFF272727,30));
         card.setElevation(dp(20));
         int w=getResources().getDisplayMetrics().widthPixels;
         FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(Math.min(dp(350),w-dp(32)),-2,Gravity.TOP|Gravity.RIGHT);
@@ -425,7 +418,7 @@ public class MainActivity extends Activity {
         for(String name:names) {
             TextView tile=text(name,13,true);
             tile.setGravity(Gravity.CENTER);
-            tile.setBackground(rounded(0x775FBBFF,22));
+            tile.setBackground(rounded(0xFF474747,22));
             LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(0,dp(72),1);
             bp.setMargins(dp(3),0,dp(3),0);
             buttons.addView(tile,bp);
@@ -470,7 +463,7 @@ public class MainActivity extends Activity {
         overlay.addView(panel,new FrameLayout.LayoutParams(-1,-1));
         TextView back=text("‹  Home",18,true);
         back.setOnClickListener(v->showHome(true));panel.addView(back);
-        TextView title=text("App Library",30,true);
+        TextView title=text("ALL APPS",30,true);title.setTypeface(Typeface.MONOSPACE);
         title.setPadding(0,dp(24),0,dp(14));panel.addView(title);
         TextView hint=text("All your apps",13,false);
         hint.setPadding(0,0,0,dp(20));panel.addView(hint);
