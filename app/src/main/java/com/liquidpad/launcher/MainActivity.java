@@ -219,7 +219,8 @@ public class MainActivity extends Activity {
     private void populateGrid(LinearLayout target,int pageIndex) {
         target.removeAllViews();
         int width=getResources().getDisplayMetrics().widthPixels;
-        int available=Math.max(dp(250),width-dp(48));
+        boolean landscape=getResources().getConfiguration().orientation==Configuration.ORIENTATION_LANDSCAPE;
+        int available=Math.max(dp(250),width-dp(landscape?310:48));
         int cell=available/columns;
         int start=pageIndex*perPage;
         int end=Math.min(start+perPage,homeApps.size());
@@ -260,73 +261,81 @@ public class MainActivity extends Activity {
         searching=false;panelOpen=false;pageMoving=false;
         boolean landscape=getResources().getConfiguration().orientation==Configuration.ORIENTATION_LANDSCAPE;
         int screenDp=(int)(getResources().getDisplayMetrics().widthPixels/getResources().getDisplayMetrics().density);
-        columns=landscape?(screenDp>=950?9:8):5;
-        perPage=columns*(landscape?3:5);
+        columns=landscape?6:5;
+        perPage=columns*(landscape?4:5);
         pages=Math.max(1,(homeApps.size()+perPage-1)/perPage);
         page=Math.max(0,Math.min(page,pages-1));
         root=new FrameLayout(this);root.setBackground(wallpaper());
-        homeContent=vertical();homeContent.setPadding(dp(30),dp(14),dp(30),dp(10));
+        homeContent=vertical();homeContent.setPadding(dp(22),dp(12),dp(22),dp(13));
         root.addView(homeContent,new FrameLayout.LayoutParams(-1,-1));
-        LinearLayout status=new LinearLayout(this);
-        status.setGravity(Gravity.CENTER_VERTICAL);
-        TextView statusTime=text(new SimpleDateFormat("h:mm",Locale.getDefault()).format(new Date()),14,true);
-        liveClock=statusTime;
-        status.addView(statusTime);
+        LinearLayout status=new LinearLayout(this);status.setGravity(Gravity.CENTER_VERTICAL);
+        TextView clock=text(new SimpleDateFormat("h:mm",Locale.getDefault()).format(new Date()),14,true);
+        status.addView(clock);
         status.addView(new View(this),new LinearLayout.LayoutParams(0,dp(1),1));
-        TextView controls=text("●●●  ▰  ▣",15,true);
-        controls.setPadding(dp(15),dp(5),dp(5),dp(7));
+        TextView controls=text("◉  ▰  ▣",15,true);
+        controls.setPadding(dp(12),dp(5),dp(6),dp(5));
         controls.setOnClickListener(v->showControlCenter());
         status.addView(controls);
         homeContent.addView(status);
-        LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);
-        top.setPadding(0,dp(18),0,0);
-        top.addView(clockWidget());
-        if(landscape || screenDp>650) {
-            LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(dp(155),dp(111));bp.leftMargin=dp(14);
-            top.addView(batteryWidget(),bp);
+        LinearLayout main=new LinearLayout(this);
+        main.setOrientation(landscape?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);
+        main.setPadding(0,dp(25),0,0);
+        if(landscape) {
+            LinearLayout widgets=vertical();widgets.setPadding(dp(3),0,dp(13),0);
+            TextView heading=text("Widgets",14,true);heading.setAlpha(.86f);
+            heading.setPadding(dp(8),0,0,dp(13));widgets.addView(heading);
+            widgets.addView(clockWidget());
+            LinearLayout.LayoutParams gap=new LinearLayout.LayoutParams(1,dp(12));
+            widgets.addView(new View(this),gap);
+            widgets.addView(batteryWidget());
+            TextView openSearch=text("⌕  Search",14,false);
+            openSearch.setGravity(Gravity.CENTER);
+            openSearch.setBackground(rounded(0x66E9EDFA,18));
+            LinearLayout.LayoutParams sl=new LinearLayout.LayoutParams(dp(210),dp(43));
+            sl.topMargin=dp(17);widgets.addView(openSearch,sl);
+            openSearch.setOnClickListener(v->showSearch());
+            main.addView(widgets,new LinearLayout.LayoutParams(dp(275),-1));
+        } else {
+            LinearLayout widgetRow=new LinearLayout(this);
+            widgetRow.addView(clockWidget());
+            LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(dp(155),dp(111));
+            bp.leftMargin=dp(10);widgetRow.addView(batteryWidget(),bp);
+            main.addView(widgetRow);
         }
-        top.addView(new View(this),new LinearLayout.LayoutParams(0,dp(1),1));
-        TextView search=text("⌕",23,false);search.setGravity(Gravity.CENTER);
-        search.setPadding(dp(17),dp(11),dp(17),dp(11));
-        search.setBackground(rounded(0x55FFFFFF,24));
-        search.setOnClickListener(v->showSearch());
-        top.addView(search);
-        homeContent.addView(top);
-        pageContainer=new FrameLayout(this);
-        pageContainer.setClipChildren(false);
+        pageContainer=new FrameLayout(this);pageContainer.setClipChildren(false);
         gridArea=vertical();gridArea.setGravity(Gravity.TOP|Gravity.CENTER_HORIZONTAL);
-        gridArea.setPadding(0,dp(37),0,0);
+        gridArea.setPadding(0,landscape?dp(32):dp(23),0,0);
         populateGrid(gridArea,page);
         pageContainer.addView(gridArea,new FrameLayout.LayoutParams(-1,-1));
-        homeContent.addView(pageContainer,new LinearLayout.LayoutParams(-1,0,1));
-        indicators=text("",16,true);indicators.setGravity(Gravity.CENTER);
-        indicators.setShadowLayer(dp(2),0,1,0x55000000);
-        indicators.setPadding(0,0,0,dp(14));updateDots();
+        main.addView(pageContainer,landscape?
+            new LinearLayout.LayoutParams(0,-1,1):
+            new LinearLayout.LayoutParams(-1,0,1));
+        homeContent.addView(main,new LinearLayout.LayoutParams(-1,0,1));
+        indicators=text("",15,true);indicators.setGravity(Gravity.CENTER);
+        indicators.setPadding(0,0,0,dp(12));updateDots();
         indicators.setOnClickListener(v->switchPage((page+1)%pages));
         homeContent.addView(indicators);
         HorizontalScrollView dockScroll=new HorizontalScrollView(this);
         dockScroll.setHorizontalScrollBarEnabled(false);
-        dockScroll.setFillViewport(false);
         LinearLayout dock=new LinearLayout(this);dock.setGravity(Gravity.CENTER_VERTICAL);
-        dock.setPadding(dp(26),dp(15),dp(26),dp(14));
-        dock.setBackground(rounded(0xA9E8EDF9,32));dock.setElevation(dp(16));
+        dock.setPadding(dp(21),dp(11),dp(21),dp(10));
+        dock.setBackground(rounded(0xB7E7EAF3,28));dock.setElevation(dp(7));
         for(String pkg:new ArrayList<>(dockPackages)) {
             ResolveInfo r=find(pkg);
-            if(r!=null) dock.addView(appIcon(r,true,dp(79)),new LinearLayout.LayoutParams(dp(79),dp(65)));
+            if(r!=null) dock.addView(appIcon(r,true,dp(70)),new LinearLayout.LayoutParams(dp(70),dp(63)));
         }
         dockScroll.addView(dock);
-        LinearLayout.LayoutParams dl=new LinearLayout.LayoutParams(-2,dp(96));
-        dl.gravity=Gravity.CENTER_HORIZONTAL;
-        homeContent.addView(dockScroll,dl);
-        TextView library=text("⌕  Search",12,false);
-        library.setGravity(Gravity.CENTER);library.setPadding(0,dp(11),0,dp(1));
-        library.setOnClickListener(v->showSearch());
-        library.setOnLongClickListener(v->{showAppLibrary();return true;});
-        homeContent.addView(library);
+        LinearLayout.LayoutParams dl=new LinearLayout.LayoutParams(-2,dp(85));
+        dl.gravity=Gravity.CENTER_HORIZONTAL;homeContent.addView(dockScroll,dl);
+        TextView search=text("⌕  Search",12,false);
+        search.setGravity(Gravity.CENTER);search.setPadding(0,dp(6),0,0);
+        search.setOnClickListener(v->showSearch());
+        search.setOnLongClickListener(v->{showAppLibrary();return true;});
+        homeContent.addView(search);
         setContentView(root);
         if(animate) {
-            homeContent.setAlpha(0);homeContent.setScaleX(.965f);homeContent.setScaleY(.965f);
-            homeContent.animate().alpha(1).scaleX(1).scaleY(1).setDuration(380)
+            homeContent.setAlpha(0);homeContent.setScaleX(.97f);homeContent.setScaleY(.97f);
+            homeContent.animate().alpha(1).scaleX(1).scaleY(1).setDuration(330)
                 .setInterpolator(new DecelerateInterpolator()).start();
         }
     }
