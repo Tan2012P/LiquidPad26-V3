@@ -35,6 +35,9 @@ public class MainActivity extends Activity {
     private SharedPreferences prefs;
     private int page = 0, columns = 8, perPage = 32, pages = 1;
     private boolean searching = false, pageMoving = false;
+    private boolean panelOpen = false;
+    private FrameLayout panelOverlay;
+    private TextView liveClock;
     private float startX, startY;
     private boolean gestureTracking = false;
 
@@ -210,7 +213,7 @@ public class MainActivity extends Activity {
         page=next;updateDots();
     }
     private void showHome(boolean animate) {
-        searching=false;pageMoving=false;
+        searching=false;panelOpen=false;pageMoving=false;
         boolean landscape=getResources().getConfiguration().orientation==Configuration.ORIENTATION_LANDSCAPE;
         int screenDp=(int)(getResources().getDisplayMetrics().widthPixels/getResources().getDisplayMetrics().density);
         columns=landscape?(screenDp>=950?9:8):5;
@@ -220,7 +223,19 @@ public class MainActivity extends Activity {
         root=new FrameLayout(this);root.setBackground(wallpaper());
         homeContent=vertical();homeContent.setPadding(dp(24),dp(17),dp(24),dp(18));
         root.addView(homeContent,new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout status=new LinearLayout(this);
+        status.setGravity(Gravity.CENTER_VERTICAL);
+        TextView statusTime=text(new SimpleDateFormat("h:mm",Locale.getDefault()).format(new Date()),14,true);
+        liveClock=statusTime;
+        status.addView(statusTime);
+        status.addView(new View(this),new LinearLayout.LayoutParams(0,dp(1),1));
+        TextView controls=text("●●●  ▰  ▣",15,true);
+        controls.setPadding(dp(15),dp(5),dp(5),dp(7));
+        controls.setOnClickListener(v->showControlCenter());
+        status.addView(controls);
+        homeContent.addView(status);
         LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);
+        top.setPadding(0,dp(10),0,0);
         top.addView(clockWidget());
         if(landscape || screenDp>650) {
             LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(dp(155),dp(111));bp.leftMargin=dp(14);
@@ -259,6 +274,10 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams dl=new LinearLayout.LayoutParams(-2,dp(86));
         dl.gravity=Gravity.CENTER_HORIZONTAL;
         homeContent.addView(dockScroll,dl);
+        TextView library=text("⌕  App Library",12,false);
+        library.setGravity(Gravity.CENTER);library.setPadding(0,dp(11),0,dp(1));
+        library.setOnClickListener(v->showAppLibrary());
+        homeContent.addView(library);
         setContentView(root);
         if(animate) {
             homeContent.setAlpha(0);homeContent.setScaleX(.965f);homeContent.setScaleY(.965f);
@@ -277,7 +296,12 @@ public class MainActivity extends Activity {
                     switchPage(page+(dx<0?1:-1));return true;
                 }
                 if(dy>dp(125) && Math.abs(dy)>Math.abs(dx)*1.5f) {
-                    showSearch();return true;
+                    if(startX>getResources().getDisplayMetrics().widthPixels*.72f) showControlCenter();
+                    else showSearch();
+                    return true;
+                }
+                if(dy < -dp(125) && Math.abs(dy)>Math.abs(dx)*1.5f) {
+                    showAppLibrary();return true;
                 }
             } else if(e.getActionMasked()==MotionEvent.ACTION_CANCEL) gestureTracking=false;
         }
@@ -325,5 +349,95 @@ public class MainActivity extends Activity {
         panel.animate().alpha(1).translationY(0).setDuration(330)
             .setInterpolator(new DecelerateInterpolator()).start();
     }
-    @Override public void onBackPressed() {showHome(true);}
+    private void showControlCenter() {
+        if(root==null || panelOpen)return;
+        panelOpen=true;
+        panelOverlay=new FrameLayout(this);
+        panelOverlay.setBackgroundColor(0x850C1730);
+        root.addView(panelOverlay,new FrameLayout.LayoutParams(-1,-1));
+        panelOverlay.setOnClickListener(v->hideControlCenter());
+        LinearLayout card=vertical();
+        card.setPadding(dp(20),dp(22),dp(20),dp(24));
+        card.setBackground(rounded(0xEE5477A9,30));
+        card.setElevation(dp(20));
+        int w=getResources().getDisplayMetrics().widthPixels;
+        FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(Math.min(dp(350),w-dp(32)),-2,Gravity.TOP|Gravity.RIGHT);
+        p.setMargins(0,dp(45),dp(18),0);
+        panelOverlay.addView(card,p);
+        card.setOnClickListener(v->{});
+        TextView title=text("Control Center",23,true);title.setPadding(0,0,0,dp(20));card.addView(title);
+        LinearLayout buttons=new LinearLayout(this);buttons.setGravity(Gravity.CENTER);
+        String[] names={"Wi-Fi","Bluetooth","Focus"};
+        for(String name:names) {
+            TextView tile=text(name,13,true);
+            tile.setGravity(Gravity.CENTER);
+            tile.setBackground(rounded(0x775FBBFF,22));
+            LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(0,dp(72),1);
+            bp.setMargins(dp(3),0,dp(3),0);
+            buttons.addView(tile,bp);
+            tile.setOnClickListener(v->{
+                Intent settings=new Intent(android.provider.Settings.ACTION_SETTINGS);
+                startActivity(settings);
+            });
+        }
+        card.addView(buttons);
+        TextView brightness=text("☀   Brightness",15,true);
+        brightness.setPadding(0,dp(20),0,dp(9));card.addView(brightness);
+        SeekBar bright=new SeekBar(this);bright.setMax(255);
+        try {bright.setProgress(android.provider.Settings.System.getInt(
+            getContentResolver(),android.provider.Settings.System.SCREEN_BRIGHTNESS));}
+        catch(Exception e){bright.setProgress(160);}
+        card.addView(bright);
+        bright.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+            public void onProgressChanged(SeekBar bar,int value,boolean user) {
+                if(user) {android.view.WindowManager.LayoutParams a=getWindow().getAttributes();
+                    a.screenBrightness=Math.max(.02f,value/255f);getWindow().setAttributes(a);}
+            }
+            public void onStartTrackingTouch(SeekBar b){}
+            public void onStopTrackingTouch(SeekBar b){}
+        });
+        TextView note=text("Quick controls · Android settings",12,false);
+        note.setPadding(0,dp(12),0,0);card.addView(note);
+        card.setTranslationY(-dp(320));card.setAlpha(0);
+        card.animate().translationY(0).alpha(1).setDuration(330)
+            .setInterpolator(new DecelerateInterpolator()).start();
+    }
+    private void hideControlCenter() {
+        if(panelOverlay==null)return;
+        FrameLayout old=panelOverlay;
+        panelOverlay=null;panelOpen=false;
+        old.animate().alpha(0).setDuration(180)
+            .withEndAction(()->{if(root!=null)root.removeView(old);}).start();
+    }
+    private void showAppLibrary() {
+        searching=true;
+        FrameLayout overlay=new FrameLayout(this);overlay.setBackground(wallpaper());
+        LinearLayout panel=vertical();panel.setPadding(dp(24),dp(22),dp(24),dp(14));
+        overlay.addView(panel,new FrameLayout.LayoutParams(-1,-1));
+        TextView back=text("‹  Home",18,true);
+        back.setOnClickListener(v->showHome(true));panel.addView(back);
+        TextView title=text("App Library",30,true);
+        title.setPadding(0,dp(24),0,dp(14));panel.addView(title);
+        TextView hint=text("All your apps",13,false);
+        hint.setPadding(0,0,0,dp(20));panel.addView(hint);
+        ScrollView scroll=new ScrollView(this);scroll.setVerticalScrollBarEnabled(false);
+        LinearLayout list=vertical();scroll.addView(list);
+        panel.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        int width=getResources().getDisplayMetrics().widthPixels;
+        int count=Math.max(3,Math.min(7,width/dp(110)));
+        int cell=(width-dp(48))/count;
+        for(int i=0;i<apps.size();i+=count) {
+            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_HORIZONTAL);
+            for(int j=i;j<Math.min(i+count,apps.size());j++)
+                row.addView(appIcon(apps.get(j),false,cell),
+                    new LinearLayout.LayoutParams(cell,dp(105)));
+            list.addView(row);
+        }
+        setContentView(overlay);
+        panel.setAlpha(0);panel.setTranslationY(dp(35));
+        panel.animate().alpha(1).translationY(0).setDuration(320).start();
+    }
+    @Override public void onBackPressed() {
+        if(panelOpen)hideControlCenter();else showHome(true);
+    }
 }
