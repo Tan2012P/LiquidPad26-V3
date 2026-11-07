@@ -1,0 +1,12 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'com.liquidpad.launcher'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.liquidpad.launcher'
+        minSdk 26
+        targetSdk 28
+        versionCode 3
+        versionName '3.0'
+    }
+}
